@@ -7,7 +7,6 @@ process.env.ENTSOE_API_TOKEN = 'test-token-for-testing';
 
 // Mock the entsoe-client module
 const entsoeClient = require('../entsoe-client.js');
-const originalGetPriceData = entsoeClient.getPriceData;
 
 // Create mock data generator
 const generateMockPriceData = () => {
@@ -44,6 +43,9 @@ const generateMockPriceData = () => {
   
   return prices;
 };
+
+// Store original function for cleanup
+const originalGetPriceData = entsoeClient.getPriceData;
 
 // Mock the getPriceData function
 entsoeClient.getPriceData = async () => {
@@ -162,6 +164,9 @@ async function runTests() {
   console.log(`Tests passed: ${testsPassed}`);
   console.log(`Tests failed: ${testsFailed}`);
   console.log('='.repeat(50));
+
+  // Cleanup: restore original function
+  entsoeClient.getPriceData = originalGetPriceData;
 
   if (testsFailed > 0) {
     process.exit(1);

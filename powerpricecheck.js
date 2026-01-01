@@ -130,16 +130,17 @@ const recommendBestTime = (durationHours = 1, lookAheadHours = 24) => {
   // Calculate current price for comparison
   const currentPrice = currentAndFuture[0].price;
   const potentialSavings = Math.round((currentPrice - lowestAvgPrice) * 100) / 100;
+  const savingsPercentage = Math.round((potentialSavings / currentPrice) * 10000) / 100;
   
   return {
     recommendation: bestSlot,
     currentPrice: currentPrice,
     potentialSavings: potentialSavings,
-    savingsPercentage: Math.round((potentialSavings / currentPrice) * 10000) / 100,
+    savingsPercentage: savingsPercentage,
     unit: 'cents/kWh',
     durationHours: durationHours,
     message: potentialSavings > 0 
-      ? `Wait until ${new Date(bestSlot.startTime).toLocaleTimeString()} to save ${potentialSavings} cents/kWh (${Math.round((potentialSavings / currentPrice) * 100)}%)` 
+      ? `Wait until ${new Date(bestSlot.startTime).toLocaleTimeString()} to save ${potentialSavings} cents/kWh (${savingsPercentage}%)` 
       : 'Current time is already optimal'
   };
 };

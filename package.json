@@ -1,7 +1,7 @@
 {
   "name": "powerpricecheck",
   "version": "1.0.0",
-  "description": "A javascript function that is able to return information about the current, past and future energy prices and recommend the best time to run appliances.",
+  "description": "A JavaScript function that is able to return information about the current, past and future energy prices and recommend the best time to run appliances.",
   "main": "powerpricecheck.js",
   "scripts": {
     "test": "node test/powerpricecheck.test.js"

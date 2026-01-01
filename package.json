@@ -1,7 +1,7 @@
 {
   "name": "powerpricecheck",
   "version": "1.0.0",
-  "description": "A JavaScript function for The Netherlands that returns information about current, past and future energy prices based on EPEX spot market patterns and recommends the best time to run appliances.",
+  "description": "A JavaScript module for The Netherlands that fetches real-time energy prices from ENTSO-E Transparency Platform and recommends the best time to run appliances to save money.",
   "main": "powerpricecheck.js",
   "scripts": {
     "test": "node test/powerpricecheck.test.js"
@@ -11,7 +11,11 @@
     "electricity",
     "price",
     "smart-home",
-    "appliance"
+    "appliance",
+    "entsoe",
+    "netherlands",
+    "day-ahead",
+    "spot-market"
   ],
   "author": "",
   "license": "MIT",

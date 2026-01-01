@@ -1,11 +1,21 @@
 /**
  * PowerPriceCheck - A module for energy price information and appliance scheduling recommendations
+ * Now with real ENTSO-E Transparency Platform API integration
  */
+
+const entsoeClient = require('./entsoe-client.js');
+
+// Try to load API token from environment
+const ENTSOE_API_TOKEN = process.env.ENTSOE_API_TOKEN;
+
+// Flag to determine if we're using real or simulated data
+const useRealData = !!ENTSOE_API_TOKEN;
 
 /**
  * Generates energy price data based on Dutch EPEX spot market patterns (in euro cents per kWh)
  * Based on actual Netherlands day-ahead market pricing structure
  * Prices vary by hour of day (0-23) following typical Dutch consumption patterns
+ * This function is used as a fallback when ENTSO-E API is not configured
  */
 const generatePriceData = () => {
   const prices = [];
@@ -74,11 +84,27 @@ const generatePriceData = () => {
 };
 
 /**
- * Get the current energy price
- * @returns {Object} Current price information
+ * Get price data from ENTSO-E API or fallback to simulated data
+ * @returns {Promise<Array>|Array} Price data
  */
-const getCurrentPrice = () => {
-  const prices = generatePriceData();
+const getPriceData = async () => {
+  if (useRealData) {
+    try {
+      return await entsoeClient.getPriceData(ENTSOE_API_TOKEN);
+    } catch (error) {
+      console.error('Failed to fetch ENTSO-E data, falling back to simulated data:', error.message);
+      return generatePriceData();
+    }
+  }
+  return generatePriceData();
+};
+
+/**
+ * Get the current energy price
+ * @returns {Promise<Object>|Object} Current price information
+ */
+const getCurrentPrice = async () => {
+  const prices = await getPriceData();
   const current = prices.find(p => p.period === 'current');
   return {
     price: current.price,
@@ -91,10 +117,10 @@ const getCurrentPrice = () => {
 /**
  * Get past energy prices
  * @param {number} hours - Number of hours to look back (default: 24)
- * @returns {Array} Array of past price data
+ * @returns {Promise<Array>|Array} Array of past price data
  */
-const getPastPrices = (hours = 24) => {
-  const prices = generatePriceData();
+const getPastPrices = async (hours = 24) => {
+  const prices = await getPriceData();
   const pastPrices = prices.filter(p => p.period === 'past').slice(-hours);
   return pastPrices.map(p => ({
     price: p.price,
@@ -107,10 +133,10 @@ const getPastPrices = (hours = 24) => {
 /**
  * Get future energy prices
  * @param {number} hours - Number of hours to look ahead (default: 24)
- * @returns {Array} Array of future price data
+ * @returns {Promise<Array>|Array} Array of future price data
  */
-const getFuturePrices = (hours = 24) => {
-  const prices = generatePriceData();
+const getFuturePrices = async (hours = 24) => {
+  const prices = await getPriceData();
   const futurePrices = prices.filter(p => p.period === 'future').slice(0, hours);
   return futurePrices.map(p => ({
     price: p.price,
@@ -124,10 +150,10 @@ const getFuturePrices = (hours = 24) => {
  * Recommend the best time to run an appliance
  * @param {number} durationHours - How long the appliance will run (default: 1)
  * @param {number} lookAheadHours - How many hours ahead to check (default: 24)
- * @returns {Object} Recommendation with best time slot and potential savings
+ * @returns {Promise<Object>|Object} Recommendation with best time slot and potential savings
  */
-const recommendBestTime = (durationHours = 1, lookAheadHours = 24) => {
-  const prices = generatePriceData();
+const recommendBestTime = async (durationHours = 1, lookAheadHours = 24) => {
+  const prices = await getPriceData();
   const currentAndFuture = prices.filter(p => p.period === 'current' || p.period === 'future').slice(0, lookAheadHours + 1);
   
   if (currentAndFuture.length < durationHours) {

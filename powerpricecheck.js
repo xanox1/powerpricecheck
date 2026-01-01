@@ -23,31 +23,44 @@ const generatePriceData = () => {
     // - Late evening (22-23): prices dropping (~7-9 euro cents/kWh)
     let basePrice;
     let variance;
+    let minPrice;
+    let maxPrice;
     
     if (hour >= 0 && hour <= 6) {
       // Night: lowest prices (6-8 euro cents/kWh)
       basePrice = 7.0;
       variance = 1.0;
+      minPrice = 6.0;
+      maxPrice = 8.0;
     } else if (hour >= 7 && hour <= 8) {
       // Morning ramp: rising prices (8-9 euro cents/kWh)
       basePrice = 8.5;
       variance = 0.5;
+      minPrice = 8.0;
+      maxPrice = 9.0;
     } else if (hour >= 9 && hour <= 16) {
       // Day: moderate prices (8.5-10 euro cents/kWh)
       basePrice = 9.0;
       variance = 1.0;
+      minPrice = 8.5;
+      maxPrice = 10.0;
     } else if (hour >= 17 && hour <= 21) {
       // Evening peak: highest prices (10-12 euro cents/kWh)
       basePrice = 11.0;
       variance = 1.0;
+      minPrice = 10.0;
+      maxPrice = 12.0;
     } else {
       // Late evening: dropping prices (7-9 euro cents/kWh)
       basePrice = 8.0;
       variance = 1.0;
+      minPrice = 7.0;
+      maxPrice = 9.0;
     }
     
-    // Add some randomness to simulate market volatility
-    const price = basePrice + (Math.random() - 0.5) * variance;
+    // Add some randomness to simulate market volatility and clamp to realistic bounds
+    let price = basePrice + (Math.random() - 0.5) * variance;
+    price = Math.max(minPrice, Math.min(maxPrice, price));
     
     prices.push({
       timestamp: date.toISOString(),

@@ -173,10 +173,10 @@ The pricing model is based on typical Netherlands day-ahead market pricing patte
 
 This module is based on the Dutch EPEX spot market (day-ahead market) pricing structure, where:
 - Prices are set through a daily auction for each hour of the following day
-- Typical range: €0.07-0.12 per kWh (7-12 euro cents/kWh)
+- Typical range: €0.06-0.12 per kWh (6-12 euro cents/kWh)
 - Average daily price: ~€0.0875/kWh (8.75 euro cents/kWh)
-- Lowest prices typically occur late night/early morning (after midnight)
-- Highest prices occur during evening peak hours (17:00-21:00)
+- Lowest prices typically occur late night/early morning (6-8 euro cents/kWh)
+- Highest prices occur during evening peak hours 17:00-21:00 (10-12 euro cents/kWh)
 - Prices reflect renewable energy generation (wind/solar) and demand patterns
 
 ## Future Enhancements

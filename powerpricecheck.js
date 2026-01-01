@@ -3,12 +3,11 @@
  */
 
 /**
- * Simulates energy price data (in cents per kWh)
- * In a real implementation, this would fetch from an API
- * Prices vary by hour of day (0-23)
+ * Generates energy price data based on Dutch EPEX spot market patterns (in euro cents per kWh)
+ * Based on actual Netherlands day-ahead market pricing structure
+ * Prices vary by hour of day (0-23) following typical Dutch consumption patterns
  */
 const generatePriceData = () => {
-  const basePrice = 12;
   const prices = [];
   const now = new Date();
   
@@ -16,17 +15,39 @@ const generatePriceData = () => {
     const date = new Date(now.getTime() + hourOffset * 60 * 60 * 1000);
     const hour = date.getHours();
     
-    // Peak hours (9-11, 17-21): higher prices
-    // Off-peak hours (22-6): lower prices
-    // Mid-peak hours: medium prices
-    let price;
-    if (hour >= 22 || hour <= 6) {
-      price = basePrice - 4 + Math.random() * 2;
-    } else if ((hour >= 9 && hour <= 11) || (hour >= 17 && hour <= 21)) {
-      price = basePrice + 6 + Math.random() * 2;
+    // Dutch EPEX spot market typical pricing patterns:
+    // - Night hours (0-6): lowest prices due to low demand (~6-8 euro cents/kWh)
+    // - Morning ramp (7-8): prices start rising (~8-9 euro cents/kWh)
+    // - Day hours (9-16): moderate prices (~8.5-10 euro cents/kWh)
+    // - Evening peak (17-21): highest prices due to high demand (~10-12 euro cents/kWh)
+    // - Late evening (22-23): prices dropping (~7-9 euro cents/kWh)
+    let basePrice;
+    let variance;
+    
+    if (hour >= 0 && hour <= 6) {
+      // Night: lowest prices (6-8 euro cents/kWh)
+      basePrice = 7.0;
+      variance = 1.0;
+    } else if (hour >= 7 && hour <= 8) {
+      // Morning ramp: rising prices (8-9 euro cents/kWh)
+      basePrice = 8.5;
+      variance = 0.5;
+    } else if (hour >= 9 && hour <= 16) {
+      // Day: moderate prices (8.5-10 euro cents/kWh)
+      basePrice = 9.0;
+      variance = 1.0;
+    } else if (hour >= 17 && hour <= 21) {
+      // Evening peak: highest prices (10-12 euro cents/kWh)
+      basePrice = 11.0;
+      variance = 1.0;
     } else {
-      price = basePrice + Math.random() * 2;
+      // Late evening: dropping prices (7-9 euro cents/kWh)
+      basePrice = 8.0;
+      variance = 1.0;
     }
+    
+    // Add some randomness to simulate market volatility
+    const price = basePrice + (Math.random() - 0.5) * variance;
     
     prices.push({
       timestamp: date.toISOString(),
@@ -50,7 +71,7 @@ const getCurrentPrice = () => {
     price: current.price,
     timestamp: current.timestamp,
     hour: current.hour,
-    unit: 'cents/kWh'
+    unit: '€cents/kWh'
   };
 };
 
@@ -66,7 +87,7 @@ const getPastPrices = (hours = 24) => {
     price: p.price,
     timestamp: p.timestamp,
     hour: p.hour,
-    unit: 'cents/kWh'
+    unit: '€cents/kWh'
   }));
 };
 
@@ -82,7 +103,7 @@ const getFuturePrices = (hours = 24) => {
     price: p.price,
     timestamp: p.timestamp,
     hour: p.hour,
-    unit: 'cents/kWh'
+    unit: '€cents/kWh'
   }));
 };
 
@@ -137,10 +158,10 @@ const recommendBestTime = (durationHours = 1, lookAheadHours = 24) => {
     currentPrice: currentPrice,
     potentialSavings: potentialSavings,
     savingsPercentage: savingsPercentage,
-    unit: 'cents/kWh',
+    unit: '€cents/kWh',
     durationHours: durationHours,
     message: potentialSavings > 0 
-      ? `Wait until ${new Date(bestSlot.startTime).toLocaleTimeString()} to save ${potentialSavings} cents/kWh (${savingsPercentage}%)` 
+      ? `Wait until ${new Date(bestSlot.startTime).toLocaleTimeString()} to save ${potentialSavings} €cents/kWh (${savingsPercentage}%)` 
       : 'Current time is already optimal'
   };
 };

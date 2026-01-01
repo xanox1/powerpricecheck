@@ -45,7 +45,7 @@ assertType(currentPrice.price, 'number', 'Current price is a number');
 assertExists(currentPrice.timestamp, 'Current price has timestamp');
 assertExists(currentPrice.hour, 'Current price has hour');
 assert(currentPrice.hour >= 0 && currentPrice.hour <= 23, 'Hour is valid (0-23)');
-assert(currentPrice.unit === 'cents/kWh', 'Unit is cents/kWh');
+assert(currentPrice.unit === '€cents/kWh', 'Unit is €cents/kWh');
 console.log(`  Current price: ${currentPrice.price} ${currentPrice.unit} at hour ${currentPrice.hour}`);
 
 // Test getPastPrices

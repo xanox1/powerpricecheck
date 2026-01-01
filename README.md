@@ -1,6 +1,6 @@
 # powerpricecheck
 
-A JavaScript module that provides information about current, past, and future energy prices and recommends the best time to run appliances to save money.
+A JavaScript module for The Netherlands that provides information about current, past, and future energy prices based on EPEX spot market patterns and recommends the best time to run appliances to save money.
 
 ## Features
 
@@ -58,10 +58,10 @@ Returns the current energy price.
 **Returns:**
 ```javascript
 {
-  price: 18.45,           // Price in cents/kWh
+  price: 11.23,           // Price in euro cents/kWh
   timestamp: "2026-01-01T19:00:00.000Z",
   hour: 19,               // Hour of day (0-23)
-  unit: "cents/kWh"
+  unit: "€cents/kWh"
 }
 ```
 
@@ -76,10 +76,10 @@ Retrieves historical energy prices.
 ```javascript
 [
   {
-    price: 12.34,
+    price: 9.12,
     timestamp: "2026-01-01T18:00:00.000Z",
     hour: 18,
-    unit: "cents/kWh"
+    unit: "€cents/kWh"
   },
   // ... more prices
 ]
@@ -110,15 +110,15 @@ Recommends the optimal time to run an appliance based on energy prices.
     startHour: 2,
     endTime: "2026-01-02T02:00:00.000Z",
     endHour: 2,
-    averagePrice: 8.32,
+    averagePrice: 7.15,
     prices: [/* array of prices for the time slot */]
   },
-  currentPrice: 19.81,
-  potentialSavings: 11.49,
-  savingsPercentage: 58,
-  unit: "cents/kWh",
+  currentPrice: 10.92,
+  potentialSavings: 3.77,
+  savingsPercentage: 34.5,
+  unit: "€cents/kWh",
   durationHours: 1,
-  message: "Wait until 2:00:00 AM to save 11.49 cents/kWh (58%)"
+  message: "Wait until 2:00:00 AM to save 3.77 €cents/kWh (34.5%)"
 }
 ```
 
@@ -128,7 +128,7 @@ Recommends the optimal time to run an appliance based on energy prices.
 ```javascript
 const recommendation = recommendBestTime(1, 24);
 console.log(recommendation.message);
-// "Wait until 2:00 AM to save 11.49 cents/kWh (58%)"
+// "Wait until 2:00 AM to save 3.77 €cents/kWh (34.5%)"
 ```
 
 ### Laundry Cycle (3 hours)
@@ -159,21 +159,35 @@ node example.js
 
 ## How It Works
 
-The module simulates energy pricing data based on typical time-of-use patterns:
+The module simulates energy pricing data based on actual Dutch EPEX spot market patterns:
 
-- **Off-Peak Hours (10 PM - 6 AM)**: Lower prices (~8-10 cents/kWh)
-- **Peak Hours (9-11 AM, 5-9 PM)**: Higher prices (~18-20 cents/kWh)
-- **Mid-Peak Hours**: Medium prices (~12-14 cents/kWh)
+- **Night Hours (0-6)**: Lowest prices due to low demand (~6-8 euro cents/kWh)
+- **Morning Ramp (7-8)**: Prices start rising (~8-9 euro cents/kWh)
+- **Day Hours (9-16)**: Moderate prices (~8.5-10 euro cents/kWh)
+- **Evening Peak (17-21)**: Highest prices due to high demand (~10-12 euro cents/kWh)
+- **Late Evening (22-23)**: Prices dropping (~7-9 euro cents/kWh)
 
-The `recommendBestTime()` function analyzes price forecasts to find the optimal time slot with the lowest average price for your appliance duration, helping you maximize energy cost savings.
+The pricing model is based on typical Netherlands day-ahead market pricing patterns from the EPEX spot market, where prices are determined hourly based on supply and demand. The `recommendBestTime()` function analyzes price forecasts to find the optimal time slot with the lowest average price for your appliance duration, helping you maximize energy cost savings.
+
+## About Dutch Energy Prices
+
+This module is based on the Dutch EPEX spot market (day-ahead market) pricing structure, where:
+- Prices are set through a daily auction for each hour of the following day
+- Typical range: €0.07-0.12 per kWh (7-12 euro cents/kWh)
+- Average daily price: ~€0.0875/kWh (8.75 euro cents/kWh)
+- Lowest prices typically occur late night/early morning (after midnight)
+- Highest prices occur during evening peak hours (17:00-21:00)
+- Prices reflect renewable energy generation (wind/solar) and demand patterns
 
 ## Future Enhancements
 
-- Integration with real energy price APIs
+- Integration with real Dutch energy price APIs (EPEX SPOT, dayahead.nl, etc.)
+- Real-time data fetching from ENTSO-E Transparency Platform
 - Support for multiple regions and time zones
 - Historical price analytics and trends
-- Carbon intensity tracking
+- Carbon intensity tracking based on Dutch energy mix
 - Smart home device integration
+- Support for dynamic energy contracts
 
 ## License
 

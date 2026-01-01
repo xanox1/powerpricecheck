@@ -1,11 +1,10 @@
 # powerpricecheck
 
-A JavaScript module for The Netherlands that provides information about current, past, and future energy prices from the ENTSO-E Transparency Platform and recommends the best time to run appliances to save money.
+A JavaScript module for The Netherlands that provides real-time energy prices from the ENTSO-E Transparency Platform and recommends the best time to run appliances to save money.
 
 ## Features
 
 - 📊 **Real ENTSO-E Data**: Fetches actual day-ahead energy prices from the ENTSO-E Transparency Platform
-- 🔄 **Automatic Fallback**: Uses simulated data based on typical Dutch EPEX patterns when API token is not configured
 - 📈 **Past Prices**: Retrieve historical energy prices for analysis
 - 🔮 **Future Prices**: View forecasted energy prices (day-ahead market)
 - 💡 **Smart Recommendations**: Get optimal time slots to run appliances and maximize savings
@@ -24,9 +23,9 @@ git clone https://github.com/xanox1/powerpricecheck.git
 cd powerpricecheck
 ```
 
-## Configuration (Optional)
+## Configuration (Required)
 
-To use real ENTSO-E Transparency Platform data, you need an API token:
+You need an ENTSO-E Transparency Platform API token to use this module:
 
 1. **Register** at [ENTSO-E Transparency Platform](https://transparency.entsoe.eu/)
 2. **Request API access** by sending an email to `transparency@entsoe.eu`
@@ -42,7 +41,7 @@ Or create a `.env` file:
 ENTSOE_API_TOKEN=your-api-token-here
 ```
 
-**Note**: If no API token is configured, the module will automatically use simulated data based on typical Dutch EPEX spot market patterns.
+**Note**: The API token is required for this module to work.
 
 ## Usage
 
@@ -54,7 +53,7 @@ const {
   recommendBestTime
 } = require('./powerpricecheck.js');
 
-// All functions now return Promises, so use async/await or .then()
+// All functions return Promises, so use async/await or .then()
 
 // Get current energy price
 const current = await getCurrentPrice();
@@ -77,7 +76,7 @@ console.log(recommendation.message);
 
 ### getCurrentPrice()
 
-Returns the current energy price from ENTSO-E API or simulated data.
+Returns the current energy price from ENTSO-E API.
 
 **Returns:** Promise<Object>
 ```javascript
@@ -183,32 +182,20 @@ node example.js
 
 ## How It Works
 
-### Real Data Mode (with ENTSO-E API Token)
-
-When an ENTSO-E API token is configured, the module:
+The module fetches real-time electricity prices from the ENTSO-E Transparency Platform:
 
 1. **Fetches real prices** from the ENTSO-E Transparency Platform API
 2. **Queries day-ahead market data** for the Netherlands (EIC code: 10YNL----------L)
 3. **Converts prices** from EUR/MWh to euro cents/kWh (divides by 10)
 4. **Caches data** for 1 hour to reduce API calls
-5. **Handles errors gracefully** by falling back to simulated data if needed
+5. **Analyzes price patterns** to find optimal time slots for running appliances
 
-### Simulated Data Mode (without API Token)
-
-The module simulates energy pricing data based on actual Dutch EPEX spot market patterns:
-
-- **Night Hours (0-6)**: Lowest prices due to low demand (~6-8 euro cents/kWh)
-- **Morning Ramp (7-8)**: Prices start rising (~8-9 euro cents/kWh)
-- **Day Hours (9-16)**: Moderate prices (~8.5-10 euro cents/kWh)
-- **Evening Peak (17-21)**: Highest prices due to high demand (~10-12 euro cents/kWh)
-- **Late Evening (22-23)**: Prices dropping (~7-9 euro cents/kWh)
-
-The pricing model is based on typical Netherlands day-ahead market pricing patterns from the EPEX spot market, where prices are determined hourly based on supply and demand. The `recommendBestTime()` function analyzes price forecasts to find the optimal time slot with the lowest average price for your appliance duration, helping you maximize energy cost savings.
+The `recommendBestTime()` function analyzes price forecasts to find the optimal time slot with the lowest average price for your appliance duration, helping you maximize energy cost savings.
 
 ## About Dutch Energy Prices
 
-This module uses the Dutch EPEX spot market (day-ahead market) pricing structure, where:
-- Prices are set through a daily auction for each hour of the following day via ENTSO-E
+This module uses the Dutch EPEX spot market (day-ahead market) pricing structure via ENTSO-E, where:
+- Prices are set through a daily auction for each hour of the following day
 - Typical range: €0.06-0.12 per kWh (6-12 euro cents/kWh)
 - Average daily price: ~€0.0875/kWh (8.75 euro cents/kWh)
 - Lowest prices typically occur late night/early morning (6-8 euro cents/kWh)

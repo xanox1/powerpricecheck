@@ -1,5 +1,11 @@
 /**
  * Example usage of PowerPriceCheck module
+ * 
+ * Before running this example, make sure you have set the ENTSOE_API_TOKEN environment variable:
+ * export ENTSOE_API_TOKEN=your-api-token-here
+ * 
+ * Or create a .env file with:
+ * ENTSOE_API_TOKEN=your-api-token-here
  */
 
 const {

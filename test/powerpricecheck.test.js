@@ -2,6 +2,54 @@
  * Test suite for PowerPriceCheck module
  */
 
+// Set a test token before requiring the module
+process.env.ENTSOE_API_TOKEN = 'test-token-for-testing';
+
+// Mock the entsoe-client module
+const entsoeClient = require('../entsoe-client.js');
+const originalGetPriceData = entsoeClient.getPriceData;
+
+// Create mock data generator
+const generateMockPriceData = () => {
+  const prices = [];
+  const now = new Date();
+  
+  for (let hourOffset = -24; hourOffset <= 24; hourOffset++) {
+    const date = new Date(now.getTime() + hourOffset * 60 * 60 * 1000);
+    const hour = date.getHours();
+    
+    // Simple price pattern for testing
+    let basePrice;
+    if (hour >= 0 && hour <= 6) {
+      basePrice = 7.0;
+    } else if (hour >= 7 && hour <= 8) {
+      basePrice = 8.5;
+    } else if (hour >= 9 && hour <= 16) {
+      basePrice = 9.0;
+    } else if (hour >= 17 && hour <= 21) {
+      basePrice = 11.0;
+    } else {
+      basePrice = 8.0;
+    }
+    
+    const price = basePrice + (Math.random() - 0.5);
+    
+    prices.push({
+      timestamp: date.toISOString(),
+      hour: date.getHours(),
+      price: Math.round(price * 100) / 100,
+      period: hourOffset < 0 ? 'past' : hourOffset === 0 ? 'current' : 'future'
+    });
+  }
+  
+  return prices;
+};
+
+// Mock the getPriceData function
+entsoeClient.getPriceData = async () => {
+  return generateMockPriceData();
+};
+
 const {
   getCurrentPrice,
   getPastPrices,

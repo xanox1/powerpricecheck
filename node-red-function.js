@@ -225,24 +225,41 @@ const getCachedPriceData = async (startDate, endDate) => {
                 // Retrieve the current price (reuse existing now variable)
                 const nowTime = now.getTime();
                 const currentHour = now.getHours();
-                const oneHourMs = 60 * 60 * 1000;
                 
-                // Find the price that matches the current hour (optimized - avoid creating Date objects in loop)
+                // Find the price that matches the current hour
                 let currentPrice = null;
                 let currentTimestamp = null;
                 for (const p of prices) {
-                    const priceTime = new Date(p.timestamp).getTime();
-                    // Check if price is within the current hour window
-                    if (priceTime <= nowTime && priceTime >= nowTime - oneHourMs) {
-                        const priceHour = new Date(p.timestamp).getHours();
-                        if (priceHour === currentHour) {
+                    const priceDate = new Date(p.timestamp);
+                    if (priceDate.getHours() === currentHour) {
+                        // Check if this price is for the current hour (within reasonable time window)
+                        const timeDiff = Math.abs(priceDate.getTime() - nowTime);
+                        if (timeDiff < 60 * 60 * 1000) { // Within 1 hour
                             currentPrice = p;
                             currentTimestamp = p.timestamp;
                             break;
                         }
                     }
                 }
-                const currentPriceValue = currentPrice ? currentPrice.price : lowestAvgPrice;
+                
+                // If no current price found, try to get the first price in our dataset
+                if (!currentPrice && prices.length > 0) {
+                    currentPrice = prices[0];
+                    currentTimestamp = prices[0].timestamp;
+                    node.warn(`[DEBUG] Current hour price not found, using first available price from dataset`);
+                }
+                
+                const currentPriceValue = currentPrice ? currentPrice.price : null;
+                
+                // Only proceed if we have a current price
+                if (currentPriceValue === null) {
+                    msg.payload = {
+                        status: "error",
+                        message: "Could not determine current price from available data.",
+                    };
+                    node.send(msg);
+                    return;
+                }
 
                 // Log current price info in debug
                 node.warn(`[DEBUG] Current Price: ${currentPriceValue} €cents/kWh at ${currentTimestamp || now.toISOString()}`);

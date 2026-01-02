@@ -9,6 +9,7 @@ A JavaScript module for The Netherlands that provides real-time energy prices fr
 - 🔮 **Future Prices**: View forecasted energy prices (day-ahead market)
 - 💡 **Smart Recommendations**: Get optimal time slots to run appliances and maximize savings
 - ⚡ **Caching**: Smart caching reduces API calls and improves performance
+- 🔴 **Node-RED Support**: Ready-to-use function node code for Node-RED integration
 
 ## Installation
 
@@ -45,6 +46,8 @@ ENTSOE_API_TOKEN=your-api-token-here
 
 ## Usage
 
+### Standard Node.js Usage
+
 ```javascript
 const {
   getCurrentPrice,
@@ -71,6 +74,73 @@ console.log(`Future prices:`, futurePrices);
 const recommendation = await recommendBestTime(1, 24);
 console.log(recommendation.message);
 ```
+
+### Node-RED Function Node Usage
+
+You can also use this module in Node-RED by copying the code from `node-red-function.js` into a function node.
+
+**Prerequisites:**
+1. Install required dependencies in your Node-RED directory:
+   ```bash
+   cd ~/.node-red  # or your Node-RED installation directory
+   npm install axios xml2js
+   ```
+
+2. Configure Node-RED `settings.js` to make modules available and set your API key:
+   ```javascript
+   functionGlobalContext: {
+       axios: require('axios'),
+       xml2js: require('xml2js')
+   },
+   env: {
+       ENTSOE_API_KEY: "your-api-token-here"
+   }
+   ```
+
+3. Restart Node-RED after modifying settings.js
+
+**Setup Steps:**
+1. Create a new function node in Node-RED
+2. Copy the entire content from `node-red-function.js` file into the function node
+3. Connect an inject node to send input messages
+4. Connect a debug node to view the output
+
+**Input Message Format:**
+```javascript
+msg.payload = {
+    action: "recommendBestTime",  // Action to perform
+    duration: 1,                  // Optional: Duration in hours (default: 1)
+    lookAheadHours: 6             // Optional: Time window to search (default: 6)
+}
+```
+
+**Output Message Format:**
+```javascript
+{
+    status: "success",
+    bestTime: {
+        averagePrice: 7.15,
+        start: "02:00",
+        end: "02:00"
+    },
+    currentPrice: 10.50,
+    currentTimestamp: "2026-01-02T15:00:00.000Z",
+    savings: 3.35,
+    savingsPercentage: 31.9,
+    message: "The best time to run your appliance is between 02:00 and 02:00. The average price during this period is €7.15 per kWh. Potential savings: 3.35 €cents/kWh (31.9%)."
+}
+```
+
+**Example Flow:**
+- Inject node → Function node (with code from `node-red-function.js`) → Debug node
+- Set inject payload: `{"action": "recommendBestTime", "duration": 1, "lookAheadHours": 6}`
+
+The Node-RED implementation includes:
+- 1-hour caching to reduce API calls
+- Detailed debug logging for troubleshooting (includes current price and timestamp)
+- Configurable time window for searching best opportunities (default: 6 hours)
+- Support for finding the best time to run appliances
+- Automatic conversion from EUR/MWh to €cents/kWh
 
 ## API Reference
 
@@ -214,6 +284,7 @@ This module uses the Dutch EPEX spot market (day-ahead market) pricing structure
 ## Future Enhancements
 
 - ✅ ~~Real-time data fetching from ENTSO-E Transparency Platform~~ **IMPLEMENTED**
+- ✅ ~~Node-RED function node integration~~ **IMPLEMENTED**
 - Support for multiple regions and time zones
 - Historical price analytics and trends
 - Carbon intensity tracking based on Dutch energy mix

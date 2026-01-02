@@ -75,7 +75,7 @@ const getFuturePrices = async (hours = 24) => {
  */
 const recommendBestTime = async (durationHours = 1, lookAheadHours = 24) => {
   const prices = await getPriceData();
-  const currentAndFuture = prices.filter(p => p.period === 'current' || p.period === 'future').slice(0, lookAheadHours + 1);
+  const currentAndFuture = prices.filter(p => p.period === 'current' || p.period === 'future').slice(0, lookAheadHours);
   
   if (currentAndFuture.length < durationHours) {
     return {

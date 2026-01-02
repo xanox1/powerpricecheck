@@ -21,6 +21,12 @@
  * 2. Send a message with msg.payload.action = "recommendBestTime" and optionally msg.payload.duration
  * 3. The node will output the recommendation with best time and potential savings
  * 
+ * Data Resolution Handling:
+ * - ENTSO-E API may return 15-minute interval data (PT15M) or hourly data (PT60M)
+ * - This function automatically detects the resolution and handles both formats
+ * - 15-minute intervals are automatically aggregated into hourly averages
+ * - This ensures consistent behavior regardless of API data format
+ * 
  * Caching and Debugging:
  * - Cache is stored in GLOBAL context (not local context) for easy inspection
  * - Access cache via: global.get('entsoePriceCache')

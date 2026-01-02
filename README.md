@@ -1,13 +1,14 @@
 # powerpricecheck
 
-A JavaScript module for The Netherlands that provides information about current, past, and future energy prices based on EPEX spot market patterns and recommends the best time to run appliances to save money.
+A JavaScript module for The Netherlands that provides real-time energy prices from the ENTSO-E Transparency Platform and recommends the best time to run appliances to save money.
 
 ## Features
 
-- 📊 **Current Price**: Get real-time energy pricing information
+- 📊 **Real ENTSO-E Data**: Fetches actual day-ahead energy prices from the ENTSO-E Transparency Platform
 - 📈 **Past Prices**: Retrieve historical energy prices for analysis
-- 🔮 **Future Prices**: View forecasted energy prices
+- 🔮 **Future Prices**: View forecasted energy prices (day-ahead market)
 - 💡 **Smart Recommendations**: Get optimal time slots to run appliances and maximize savings
+- ⚡ **Caching**: Smart caching reduces API calls and improves performance
 
 ## Installation
 
@@ -22,6 +23,26 @@ git clone https://github.com/xanox1/powerpricecheck.git
 cd powerpricecheck
 ```
 
+## Configuration (Required)
+
+You need an ENTSO-E Transparency Platform API token to use this module:
+
+1. **Register** at [ENTSO-E Transparency Platform](https://transparency.entsoe.eu/)
+2. **Request API access** by sending an email to `transparency@entsoe.eu`
+3. **Generate your token** in Account Settings → Web API Security Token
+4. **Set environment variable**:
+
+```bash
+export ENTSOE_API_TOKEN=your-api-token-here
+```
+
+Or create a `.env` file:
+```bash
+ENTSOE_API_TOKEN=your-api-token-here
+```
+
+**Note**: The API token is required for this module to work.
+
 ## Usage
 
 ```javascript
@@ -32,20 +53,22 @@ const {
   recommendBestTime
 } = require('./powerpricecheck.js');
 
+// All functions return Promises, so use async/await or .then()
+
 // Get current energy price
-const current = getCurrentPrice();
+const current = await getCurrentPrice();
 console.log(`Current price: ${current.price} ${current.unit}`);
 
 // Get past 24 hours of prices
-const pastPrices = getPastPrices(24);
+const pastPrices = await getPastPrices(24);
 console.log(`Past prices:`, pastPrices);
 
 // Get future 24 hours of prices
-const futurePrices = getFuturePrices(24);
+const futurePrices = await getFuturePrices(24);
 console.log(`Future prices:`, futurePrices);
 
 // Get recommendation for running a 1-hour appliance
-const recommendation = recommendBestTime(1, 24);
+const recommendation = await recommendBestTime(1, 24);
 console.log(recommendation.message);
 ```
 
@@ -53,12 +76,12 @@ console.log(recommendation.message);
 
 ### getCurrentPrice()
 
-Returns the current energy price.
+Returns the current energy price from ENTSO-E API.
 
-**Returns:**
+**Returns:** Promise<Object>
 ```javascript
 {
-  price: 11.23,           // Price in euro cents/kWh
+  price: 11.23,           // Price in euro cents/kWh (converted from EUR/MWh)
   timestamp: "2026-01-01T19:00:00.000Z",
   hour: 19,               // Hour of day (0-23)
   unit: "€cents/kWh"
@@ -72,7 +95,7 @@ Retrieves historical energy prices.
 **Parameters:**
 - `hours` (number, optional): Number of hours to look back. Default: 24
 
-**Returns:** Array of price objects
+**Returns:** Promise<Array> of price objects
 ```javascript
 [
   {
@@ -87,12 +110,12 @@ Retrieves historical energy prices.
 
 ### getFuturePrices(hours)
 
-Retrieves forecasted energy prices.
+Retrieves forecasted energy prices from ENTSO-E day-ahead market.
 
 **Parameters:**
 - `hours` (number, optional): Number of hours to look ahead. Default: 24
 
-**Returns:** Array of price objects (same format as getPastPrices)
+**Returns:** Promise<Array> of price objects (same format as getPastPrices)
 
 ### recommendBestTime(durationHours, lookAheadHours)
 
@@ -102,7 +125,7 @@ Recommends the optimal time to run an appliance based on energy prices.
 - `durationHours` (number, optional): How long the appliance will run. Default: 1
 - `lookAheadHours` (number, optional): How many hours ahead to check. Default: 24
 
-**Returns:**
+**Returns:** Promise<Object>
 ```javascript
 {
   recommendation: {
@@ -126,21 +149,21 @@ Recommends the optimal time to run an appliance based on energy prices.
 
 ### Dishwasher (1 hour)
 ```javascript
-const recommendation = recommendBestTime(1, 24);
+const recommendation = await recommendBestTime(1, 24);
 console.log(recommendation.message);
 // "Wait until 2:00 AM to save 3.77 €cents/kWh (34.5%)"
 ```
 
 ### Laundry Cycle (3 hours)
 ```javascript
-const recommendation = recommendBestTime(3, 24);
+const recommendation = await recommendBestTime(3, 24);
 console.log(recommendation.message);
 // Shows best 3-hour window with average savings
 ```
 
 ### Electric Vehicle Charging (6 hours)
 ```javascript
-const recommendation = recommendBestTime(6, 24);
+const recommendation = await recommendBestTime(6, 24);
 console.log(recommendation.message);
 // Finds the cheapest 6-hour window in the next 24 hours
 ```
@@ -159,19 +182,19 @@ node example.js
 
 ## How It Works
 
-The module simulates energy pricing data based on actual Dutch EPEX spot market patterns:
+The module fetches real-time electricity prices from the ENTSO-E Transparency Platform:
 
-- **Night Hours (0-6)**: Lowest prices due to low demand (~6-8 euro cents/kWh)
-- **Morning Ramp (7-8)**: Prices start rising (~8-9 euro cents/kWh)
-- **Day Hours (9-16)**: Moderate prices (~8.5-10 euro cents/kWh)
-- **Evening Peak (17-21)**: Highest prices due to high demand (~10-12 euro cents/kWh)
-- **Late Evening (22-23)**: Prices dropping (~7-9 euro cents/kWh)
+1. **Fetches real prices** from the ENTSO-E Transparency Platform API
+2. **Queries day-ahead market data** for the Netherlands (EIC code: 10YNL----------L)
+3. **Converts prices** from EUR/MWh to euro cents/kWh (divides by 10)
+4. **Caches data** for 1 hour to reduce API calls
+5. **Analyzes price patterns** to find optimal time slots for running appliances
 
-The pricing model is based on typical Netherlands day-ahead market pricing patterns from the EPEX spot market, where prices are determined hourly based on supply and demand. The `recommendBestTime()` function analyzes price forecasts to find the optimal time slot with the lowest average price for your appliance duration, helping you maximize energy cost savings.
+The `recommendBestTime()` function analyzes price forecasts to find the optimal time slot with the lowest average price for your appliance duration, helping you maximize energy cost savings.
 
 ## About Dutch Energy Prices
 
-This module is based on the Dutch EPEX spot market (day-ahead market) pricing structure, where:
+This module uses the Dutch EPEX spot market (day-ahead market) pricing structure via ENTSO-E, where:
 - Prices are set through a daily auction for each hour of the following day
 - Typical range: €0.06-0.12 per kWh (6-12 euro cents/kWh)
 - Average daily price: ~€0.0875/kWh (8.75 euro cents/kWh)
@@ -179,15 +202,24 @@ This module is based on the Dutch EPEX spot market (day-ahead market) pricing st
 - Highest prices occur during evening peak hours 17:00-21:00 (10-12 euro cents/kWh)
 - Prices reflect renewable energy generation (wind/solar) and demand patterns
 
+## Technical Details
+
+- **API**: ENTSO-E Transparency Platform REST API
+- **Data Format**: XML (automatically parsed to JSON)
+- **Price Unit**: Converted from EUR/MWh to euro cents/kWh
+- **Update Frequency**: Day-ahead prices are typically published daily around 13:00 CET
+- **Caching**: 1-hour cache to optimize API usage
+- **Dependencies**: axios (HTTP client), xml2js (XML parser)
+
 ## Future Enhancements
 
-- Integration with real Dutch energy price APIs (EPEX SPOT, dayahead.nl, etc.)
-- Real-time data fetching from ENTSO-E Transparency Platform
+- ✅ ~~Real-time data fetching from ENTSO-E Transparency Platform~~ **IMPLEMENTED**
 - Support for multiple regions and time zones
 - Historical price analytics and trends
 - Carbon intensity tracking based on Dutch energy mix
 - Smart home device integration
 - Support for dynamic energy contracts
+- WebSocket support for real-time price updates
 
 ## License
 

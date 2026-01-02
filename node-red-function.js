@@ -236,7 +236,7 @@ const getCachedPriceData = async (startDate, endDate) => {
                 // Retrieve the current price
                 // Get the start of the current hour
                 const currentHourStart = new Date(now);
-                currentHourStart.setMinutes(0, 0, 0, 0);
+                currentHourStart.setMinutes(0, 0, 0);
                 const currentHourEnd = new Date(currentHourStart);
                 currentHourEnd.setHours(currentHourEnd.getHours() + 1);
                 

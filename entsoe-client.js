@@ -82,7 +82,7 @@ const parseEntsoeXml = async (xml) => {
   }
   
   // Sort by timestamp
-  prices.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  prices.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   
   return prices;
 };

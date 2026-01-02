@@ -23,7 +23,7 @@ function aggregateToHourly(prices) {
             price: Math.round((pricesInHour.reduce((sum, p) => sum + p, 0) / pricesInHour.length) * 100) / 100,
             unit: "€cents/kWh"
         }))
-        .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     
     return hourlyPrices;
 }

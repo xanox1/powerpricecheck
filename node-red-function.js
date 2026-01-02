@@ -222,23 +222,26 @@ const getCachedPriceData = async (startDate, endDate) => {
                     new Date(bestSlot[bestSlot.length - 1].timestamp)
                 );
 
-                // Retrieve the current price (reuse existing now variable)
-                const nowTime = now.getTime();
-                const currentHour = now.getHours();
+                // Retrieve the current price
+                // Get the start of the current hour
+                const currentHourStart = new Date(now);
+                currentHourStart.setMinutes(0, 0, 0);
+                const currentHourEnd = new Date(currentHourStart);
+                currentHourEnd.setHours(currentHourEnd.getHours() + 1);
+                
+                const currentHourStartTime = currentHourStart.getTime();
+                const currentHourEndTime = currentHourEnd.getTime();
                 
                 // Find the price that matches the current hour
                 let currentPrice = null;
                 let currentTimestamp = null;
                 for (const p of prices) {
-                    const priceDate = new Date(p.timestamp);
-                    if (priceDate.getHours() === currentHour) {
-                        // Check if this price is for the current hour (within reasonable time window)
-                        const timeDiff = Math.abs(priceDate.getTime() - nowTime);
-                        if (timeDiff < 60 * 60 * 1000) { // Within 1 hour
-                            currentPrice = p;
-                            currentTimestamp = p.timestamp;
-                            break;
-                        }
+                    const priceTime = new Date(p.timestamp).getTime();
+                    // Check if price is within the current hour window
+                    if (priceTime >= currentHourStartTime && priceTime < currentHourEndTime) {
+                        currentPrice = p;
+                        currentTimestamp = p.timestamp;
+                        break;
                     }
                 }
                 

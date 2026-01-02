@@ -234,13 +234,13 @@ const getCachedPriceData = async (startDate, endDate) => {
 
         let prices = await getCachedPriceData(now, future);
         
-        // If we have 15-minute interval data (more than one price per hour), 
-        // aggregate to hourly averages for easier processing
+        // Aggregate price data into hourly averages
+        // This handles both 15-minute interval data (PT15M) and hourly data (PT60M)
         const pricesByHour = new Map();
         prices.forEach(p => {
-            const timestamp = new Date(p.timestamp);
-            timestamp.setMinutes(0, 0, 0); // Round down to hour
-            const hourKey = timestamp.toISOString();
+            const hourTimestamp = new Date(p.timestamp);
+            hourTimestamp.setMinutes(0, 0, 0); // Round down to hour
+            const hourKey = hourTimestamp.toISOString();
             
             if (!pricesByHour.has(hourKey)) {
                 pricesByHour.set(hourKey, []);

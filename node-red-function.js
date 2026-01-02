@@ -188,6 +188,17 @@ const getCachedPriceData = async (startDate, endDate) => {
 
         const now = new Date();
         const lookAheadHours = msg.payload.lookAheadHours || 6; // Default to 6 hours lookahead
+        
+        // Validate lookAheadHours parameter
+        if (typeof lookAheadHours !== 'number' || lookAheadHours < 1 || lookAheadHours > 168) {
+            msg.payload = {
+                status: "error",
+                message: "Invalid lookAheadHours parameter. Must be a number between 1 and 168 (1 week).",
+            };
+            node.send(msg);
+            return;
+        }
+        
         const future = new Date(now.getTime() + lookAheadHours * 60 * 60 * 1000);
 
         let prices = await getCachedPriceData(now, future);
@@ -245,27 +256,20 @@ const getCachedPriceData = async (startDate, endDate) => {
                     }
                 }
                 
-                // If no current price found, try to get the first price in our dataset
-                if (!currentPrice && prices.length > 0) {
-                    currentPrice = prices[0];
-                    currentTimestamp = prices[0].timestamp;
-                    node.warn(`[DEBUG] Current hour price not found, using first available price from dataset`);
-                }
-                
                 const currentPriceValue = currentPrice ? currentPrice.price : null;
                 
                 // Only proceed if we have a current price
                 if (currentPriceValue === null) {
                     msg.payload = {
                         status: "error",
-                        message: "Could not determine current price from available data.",
+                        message: "Could not determine current price from available data. The current hour may not be included in the fetched price data.",
                     };
                     node.send(msg);
                     return;
                 }
 
                 // Log current price info in debug
-                node.warn(`[DEBUG] Current Price: ${currentPriceValue} €cents/kWh at ${currentTimestamp || now.toISOString()}`);
+                node.warn(`[DEBUG] Current Price: ${currentPriceValue} €cents/kWh at ${currentTimestamp}`);
                 node.warn(`[DEBUG] Look-ahead window: ${lookAheadHours} hours`);
 
                 // Calculate savings (handle both positive and negative cases)
@@ -301,7 +305,7 @@ const getCachedPriceData = async (startDate, endDate) => {
                         end: endTime,
                     },
                     currentPrice: currentPriceValue,
-                    currentTimestamp: currentTimestamp || now.toISOString(),
+                    currentTimestamp: currentTimestamp,
                     savings: Math.round(savings * 100) / 100,
                     savingsPercentage: savingsPercentage,
                     message,

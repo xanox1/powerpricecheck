@@ -25,7 +25,8 @@
  * {
  *   payload: {
  *     action: "recommendBestTime",  // Currently supported action
- *     duration: 1                    // Optional: Duration in hours (default: 1)
+ *     duration: 1,                   // Optional: Duration in hours (default: 1)
+ *     lookAheadHours: 6              // Optional: Time window to search (default: 6)
  *   }
  * }
  * 
@@ -39,6 +40,7 @@
  *       end: "02:00"
  *     },
  *     currentPrice: 10.50,
+ *     currentTimestamp: "2026-01-02T15:00:00.000Z",
  *     savings: 3.35,
  *     savingsPercentage: 31.9,
  *     message: "The best time to run your appliance is between 02:00 and 02:00. The average price during this period is €7.15 per kWh. Potential savings: 3.35 €cents/kWh (31.9%)."
@@ -185,9 +187,10 @@ const getCachedPriceData = async (startDate, endDate) => {
         node.warn(`[DEBUG] Message payload: ${JSON.stringify(msg.payload, null, 2)}`);
 
         const now = new Date();
-        const future24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+        const lookAheadHours = msg.payload.lookAheadHours || 6; // Default to 6 hours lookahead
+        const future = new Date(now.getTime() + lookAheadHours * 60 * 60 * 1000);
 
-        let prices = await getCachedPriceData(now, future24h);
+        let prices = await getCachedPriceData(now, future);
 
         if (action === "recommendBestTime") {
             const duration = msg.payload.duration || 1; // Appliance runtime in hours
@@ -226,6 +229,7 @@ const getCachedPriceData = async (startDate, endDate) => {
                 
                 // Find the price that matches the current hour (optimized - avoid creating Date objects in loop)
                 let currentPrice = null;
+                let currentTimestamp = null;
                 for (const p of prices) {
                     const priceTime = new Date(p.timestamp).getTime();
                     // Check if price is within the current hour window
@@ -233,11 +237,16 @@ const getCachedPriceData = async (startDate, endDate) => {
                         const priceHour = new Date(p.timestamp).getHours();
                         if (priceHour === currentHour) {
                             currentPrice = p;
+                            currentTimestamp = p.timestamp;
                             break;
                         }
                     }
                 }
                 const currentPriceValue = currentPrice ? currentPrice.price : lowestAvgPrice;
+
+                // Log current price info in debug
+                node.warn(`[DEBUG] Current Price: ${currentPriceValue} €cents/kWh at ${currentTimestamp || now.toISOString()}`);
+                node.warn(`[DEBUG] Look-ahead window: ${lookAheadHours} hours`);
 
                 // Calculate savings (handle both positive and negative cases)
                 const savings = currentPriceValue - lowestAvgPrice;
@@ -272,6 +281,7 @@ const getCachedPriceData = async (startDate, endDate) => {
                         end: endTime,
                     },
                     currentPrice: currentPriceValue,
+                    currentTimestamp: currentTimestamp || now.toISOString(),
                     savings: Math.round(savings * 100) / 100,
                     savingsPercentage: savingsPercentage,
                     message,

@@ -204,7 +204,7 @@ const getCachedPriceData = async (startDate, endDate) => {
         let prices = await getCachedPriceData(now, future);
 
         if (action === "recommendBestTime") {
-            const duration = msg.payload.duration || 1; // Appliance runtime in hours
+            const duration = parseInt(msg.payload.duration) || 1; // Appliance runtime in hours (ensure it's a number)
             let bestSlot = null;
             let lowestAvgPrice = Infinity;
 
@@ -228,10 +228,13 @@ const getCachedPriceData = async (startDate, endDate) => {
                 });
 
                 // Format start and end time
-                const startTime = formatter.format(new Date(bestSlot[0].timestamp));
-                const endTime = formatter.format(
-                    new Date(bestSlot[bestSlot.length - 1].timestamp)
-                );
+                // Start time is the beginning of the first hour in the slot
+                const startDate = new Date(bestSlot[0].timestamp);
+                const startTime = formatter.format(startDate);
+                
+                // End time is when the appliance finishes (start + duration hours)
+                const endDate = new Date(startDate.getTime() + duration * 60 * 60 * 1000);
+                const endTime = formatter.format(endDate);
 
                 // Retrieve the current price
                 // Get the start of the current hour

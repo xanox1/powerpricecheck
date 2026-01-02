@@ -50,8 +50,7 @@ const {
   getCurrentPrice,
   getPastPrices,
   getFuturePrices,
-  recommendBestTime,
-  getGlobalContext
+  recommendBestTime
 } = require('./powerpricecheck.js');
 
 // All functions return Promises, so use async/await or .then()
@@ -71,10 +70,6 @@ console.log(`Future prices:`, futurePrices);
 // Get recommendation for running a 1-hour appliance
 const recommendation = await recommendBestTime(1, 24);
 console.log(recommendation.message);
-
-// Access global context (stores raw and formatted data from last API call)
-const context = getGlobalContext();
-console.log(`Today's prices:`, context.formatted.todaysPrices);
 ```
 
 ## API Reference
@@ -136,8 +131,8 @@ Recommends the optimal time to run an appliance based on energy prices.
   recommendation: {
     startTime: "2026-01-02T02:00:00.000Z",
     startHour: 2,
-    endTime: "2026-01-02T03:00:00.000Z",  // When the appliance finishes (start + duration)
-    endHour: 3,
+    endTime: "2026-01-02T02:00:00.000Z",
+    endHour: 2,
     averagePrice: 7.15,
     prices: [/* array of prices for the time slot */]
   },
@@ -148,39 +143,6 @@ Recommends the optimal time to run an appliance based on energy prices.
   durationHours: 1,
   message: "Wait until 2:00:00 AM to save 3.77 €cents/kWh (34.5%)"
 }
-```
-
-### getGlobalContext()
-
-Returns the global context containing both raw and formatted price data that was stored during the last API call.
-
-**Returns:** Object
-```javascript
-{
-  raw: [/* array of raw price data from API */],
-  formatted: {
-    lastUpdated: "2026-01-02T16:00:00.000Z",
-    date: "2026-01-02",  // Today's date
-    todaysPrices: [/* array of today's prices only, sorted by hour */],
-    allPrices: [/* array of all prices (past, current, future) */]
-  }
-}
-```
-
-**Usage:**
-```javascript
-const { getCurrentPrice, getGlobalContext } = require('./powerpricecheck.js');
-
-// First API call populates the global context
-await getCurrentPrice();
-
-// Access the global context
-const context = getGlobalContext();
-console.log(context.formatted.todaysPrices);
-
-// Or access directly via global variable
-console.log(global.powerPriceContext.raw);
-console.log(global.powerPriceContext.formatted.date);
 ```
 
 ## Example Scenarios

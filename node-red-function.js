@@ -150,12 +150,21 @@ const getCachedPriceData = async (startDate, endDate) => {
             const points = Array.isArray(period.Point)
                 ? period.Point
                 : [period.Point];
+            
+            // Determine resolution (PT60M for hourly, PT15M for 15-minute intervals)
+            const resolution = period.resolution || 'PT60M';
+            let resolutionMinutes = 60; // default hourly
+            if (resolution === 'PT15M') resolutionMinutes = 15;
+            else if (resolution === 'PT30M') resolutionMinutes = 30;
+            
+            node.warn(`[DEBUG] Processing period with resolution: ${resolution} (${resolutionMinutes} minutes)`);
 
             points.forEach((point) => {
                 const priceEurMwh = parseFloat(point["price.amount"]);
+                const position = parseInt(point.position) - 1; // Position is 1-indexed
                 const timestamp = new Date(
                     periodStart.getTime() +
-                    (parseInt(point.position) - 1) * 60 * 60 * 1000
+                    position * resolutionMinutes * 60 * 1000
                 );
                 const price = priceEurMwh / 10; // Convert EUR/MWh to €cents/kWh
 
@@ -218,14 +227,39 @@ const getCachedPriceData = async (startDate, endDate) => {
         const future = new Date(now.getTime() + lookAheadHours * 60 * 60 * 1000);
 
         let prices = await getCachedPriceData(now, future);
+        
+        // If we have 15-minute interval data (more than one price per hour), 
+        // aggregate to hourly averages for easier processing
+        const pricesByHour = new Map();
+        prices.forEach(p => {
+            const timestamp = new Date(p.timestamp);
+            timestamp.setMinutes(0, 0, 0); // Round down to hour
+            const hourKey = timestamp.toISOString();
+            
+            if (!pricesByHour.has(hourKey)) {
+                pricesByHour.set(hourKey, []);
+            }
+            pricesByHour.get(hourKey).push(p.price);
+        });
+        
+        // Convert to hourly averages
+        const hourlyPrices = Array.from(pricesByHour.entries())
+            .map(([timestamp, pricesInHour]) => ({
+                timestamp,
+                price: Math.round((pricesInHour.reduce((sum, p) => sum + p, 0) / pricesInHour.length) * 100) / 100,
+                unit: "€cents/kWh"
+            }))
+            .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        
+        node.warn(`[DEBUG] Aggregated ${prices.length} price entries into ${hourlyPrices.length} hourly averages`);
 
         if (action === "recommendBestTime") {
             const duration = parseInt(msg.payload.duration) || 1; // Appliance runtime in hours (ensure it's a number)
             let bestSlot = null;
             let lowestAvgPrice = Infinity;
 
-            for (let i = 0; i <= prices.length - duration; i++) {
-                const slot = prices.slice(i, i + duration);
+            for (let i = 0; i <= hourlyPrices.length - duration; i++) {
+                const slot = hourlyPrices.slice(i, i + duration);
                 const avgPrice =
                     slot.reduce((sum, p) => sum + p.price, 0) / slot.length;
 
@@ -252,27 +286,21 @@ const getCachedPriceData = async (startDate, endDate) => {
                 const endDate = new Date(startDate.getTime() + duration * 60 * 60 * 1000);
                 const endTime = formatter.format(endDate);
 
-                // Retrieve the current price
+                // Retrieve the current price from hourly aggregated data
                 // Get the start of the current hour
                 const currentHourStart = new Date(now);
                 currentHourStart.setMinutes(0, 0, 0);
-                const currentHourEnd = new Date(currentHourStart);
-                currentHourEnd.setHours(currentHourEnd.getHours() + 1);
+                const currentHourKey = currentHourStart.toISOString();
                 
-                const currentHourStartTime = currentHourStart.getTime();
-                const currentHourEndTime = currentHourEnd.getTime();
-                
-                // Find the price that matches the current hour
+                // Find the current hour in hourly prices
                 let currentPriceValue = null;
                 let currentTimestamp = null;
-                for (const p of prices) {
-                    const priceTime = new Date(p.timestamp).getTime();
-                    // Check if price is within the current hour window
-                    if (priceTime >= currentHourStartTime && priceTime < currentHourEndTime) {
-                        currentPriceValue = p.price;
-                        currentTimestamp = p.timestamp;
-                        break;
-                    }
+                const currentHourPrice = hourlyPrices.find(p => p.timestamp === currentHourKey);
+                
+                if (currentHourPrice) {
+                    currentPriceValue = currentHourPrice.price;
+                    currentTimestamp = currentHourPrice.timestamp;
+                    node.warn(`[DEBUG] Current hour price found: ${currentPriceValue} €cents/kWh`);
                 }
                 
                 // Only proceed if we have a current price

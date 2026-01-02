@@ -121,13 +121,13 @@ msg.payload = {
     bestTime: {
         averagePrice: 7.15,
         start: "02:00",
-        end: "02:00"
+        end: "03:00"  // End time shows when appliance finishes (start + duration)
     },
     currentPrice: 10.50,
     currentTimestamp: "2026-01-02T15:00:00.000Z",
     savings: 3.35,
     savingsPercentage: 31.9,
-    message: "The best time to run your appliance is between 02:00 and 02:00. The average price during this period is €7.15 per kWh. Potential savings: 3.35 €cents/kWh (31.9%)."
+    message: "The best time to run your appliance is between 02:00 and 03:00. The average price during this period is €7.15 per kWh. Potential savings: 3.35 €cents/kWh (31.9%)."
 }
 ```
 
@@ -136,7 +136,10 @@ msg.payload = {
 - Set inject payload: `{"action": "recommendBestTime", "duration": 1, "lookAheadHours": 6}`
 
 The Node-RED implementation includes:
-- 1-hour caching to reduce API calls
+- 1-hour caching in global context to reduce API calls
+- Cache stored in global context for easy inspection and debugging
+- Access cache via: `global.get('entsoePriceCache')`
+- See `examples/inspect-cache.js` for helper functions to inspect the cache
 - Detailed debug logging for troubleshooting (includes current price and timestamp)
 - Configurable time window for searching best opportunities (default: 6 hours)
 - Support for finding the best time to run appliances
@@ -201,8 +204,8 @@ Recommends the optimal time to run an appliance based on energy prices.
   recommendation: {
     startTime: "2026-01-02T02:00:00.000Z",
     startHour: 2,
-    endTime: "2026-01-02T02:00:00.000Z",
-    endHour: 2,
+    endTime: "2026-01-02T03:00:00.000Z",  // When appliance finishes (start + duration)
+    endHour: 3,
     averagePrice: 7.15,
     prices: [/* array of prices for the time slot */]
   },

@@ -21,6 +21,14 @@
  * 2. Send a message with msg.payload.action = "recommendBestTime" and optionally msg.payload.duration
  * 3. The node will output the recommendation with best time and potential savings
  * 
+ * Caching and Debugging:
+ * - Cache is stored in GLOBAL context (not local context) for easy inspection
+ * - Access cache via: global.get('entsoePriceCache')
+ * - Cache contains: timestamp, fetchedAt, data (prices array), priceCount, expiresAt
+ * - Cache lifetime: 1 hour (3600 seconds)
+ * - You can view/inspect the cache in Node-RED debug panel or any function node
+ * - This makes it easy to check for cache issues or review API results
+ * 
  * Input message format:
  * {
  *   payload: {
@@ -37,13 +45,13 @@
  *     bestTime: {
  *       averagePrice: 7.15,
  *       start: "02:00",
- *       end: "02:00"
+ *       end: "03:00"  // End time shows when appliance finishes (start + duration)
  *     },
  *     currentPrice: 10.50,
  *     currentTimestamp: "2026-01-02T15:00:00.000Z",
  *     savings: 3.35,
  *     savingsPercentage: 31.9,
- *     message: "The best time to run your appliance is between 02:00 and 02:00. The average price during this period is €7.15 per kWh. Potential savings: 3.35 €cents/kWh (31.9%)."
+ *     message: "The best time to run your appliance is between 02:00 and 03:00. The average price during this period is €7.15 per kWh. Potential savings: 3.35 €cents/kWh (31.9%)."
  *   }
  * }
  */
@@ -74,13 +82,14 @@ const getCachedPriceData = async (startDate, endDate) => {
     node.warn(`Fetching price data for range: ${startDate} to ${endDate}`);
     node.warn(`[DEBUG] Current timestamp: ${now}`);
 
-    // Check cache validity
-    const cachedData = context.get(cacheKey);
+    // Check cache validity in GLOBAL context (easier to inspect and debug)
+    const cachedData = global.get(cacheKey);
     if (cachedData && now - cachedData.timestamp < CACHE_LIFESPAN) {
-        node.warn(`[DEBUG] Cached data found. Timestamp: ${cachedData.timestamp}`);
+        node.warn(`[DEBUG] Using cached data from global context. Timestamp: ${cachedData.timestamp}`);
+        node.warn(`[DEBUG] Cache age: ${Math.round((now - cachedData.timestamp) / 1000)} seconds`);
         return cachedData.data; // Return cached data with debug logs
     } else {
-        node.warn(`[DEBUG] No valid cache found. Will fetch new data.`);
+        node.warn(`[DEBUG] No valid cache found in global context. Will fetch new data.`);
     }
 
     // Format dates for API
@@ -161,12 +170,19 @@ const getCachedPriceData = async (startDate, endDate) => {
         // Log processed data sample
         node.warn(`[DEBUG] Parsed ${prices.length} price entries. Example: ${JSON.stringify(prices[0], null, 2)}`);
 
-        // Cache the parsed data
+        // Cache the parsed data in GLOBAL context (easier to inspect and debug)
         const newCache = {
             timestamp: now,
+            fetchedAt: new Date(now).toISOString(),
             data: prices,
+            priceCount: prices.length,
+            cacheLifespanMs: CACHE_LIFESPAN,
+            expiresAt: new Date(now + CACHE_LIFESPAN).toISOString()
         };
-        context.set(cacheKey, newCache);
+        global.set(cacheKey, newCache);
+        node.warn(`[DEBUG] Price data cached in global context (key: '${cacheKey}')`);
+        node.warn(`[DEBUG] Cache expires at: ${newCache.expiresAt}`);
+        node.warn(`[DEBUG] Access cache via: global.get('${cacheKey}')`);
 
         return prices;
     } catch (err) {
@@ -204,7 +220,7 @@ const getCachedPriceData = async (startDate, endDate) => {
         let prices = await getCachedPriceData(now, future);
 
         if (action === "recommendBestTime") {
-            const duration = msg.payload.duration || 1; // Appliance runtime in hours
+            const duration = parseInt(msg.payload.duration) || 1; // Appliance runtime in hours (ensure it's a number)
             let bestSlot = null;
             let lowestAvgPrice = Infinity;
 
@@ -228,10 +244,13 @@ const getCachedPriceData = async (startDate, endDate) => {
                 });
 
                 // Format start and end time
-                const startTime = formatter.format(new Date(bestSlot[0].timestamp));
-                const endTime = formatter.format(
-                    new Date(bestSlot[bestSlot.length - 1].timestamp)
-                );
+                // Start time is the beginning of the first hour in the slot
+                const startDate = new Date(bestSlot[0].timestamp);
+                const startTime = formatter.format(startDate);
+                
+                // End time is when the appliance finishes (start + duration hours)
+                const endDate = new Date(startDate.getTime() + duration * 60 * 60 * 1000);
+                const endTime = formatter.format(endDate);
 
                 // Retrieve the current price
                 // Get the start of the current hour

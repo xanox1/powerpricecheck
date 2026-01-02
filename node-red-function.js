@@ -25,7 +25,8 @@
  * {
  *   payload: {
  *     action: "recommendBestTime",  // Currently supported action
- *     duration: 1                    // Optional: Duration in hours (default: 1)
+ *     duration: 1,                   // Optional: Duration in hours (default: 1)
+ *     lookAheadHours: 6              // Optional: Time window to search (default: 6)
  *   }
  * }
  * 
@@ -39,6 +40,7 @@
  *       end: "02:00"
  *     },
  *     currentPrice: 10.50,
+ *     currentTimestamp: "2026-01-02T15:00:00.000Z",
  *     savings: 3.35,
  *     savingsPercentage: 31.9,
  *     message: "The best time to run your appliance is between 02:00 and 02:00. The average price during this period is €7.15 per kWh. Potential savings: 3.35 €cents/kWh (31.9%)."
@@ -185,9 +187,21 @@ const getCachedPriceData = async (startDate, endDate) => {
         node.warn(`[DEBUG] Message payload: ${JSON.stringify(msg.payload, null, 2)}`);
 
         const now = new Date();
-        const future24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+        const lookAheadHours = msg.payload.lookAheadHours || 6; // Default to 6 hours lookahead
+        
+        // Validate lookAheadHours parameter
+        if (typeof lookAheadHours !== 'number' || lookAheadHours < 1 || lookAheadHours > 168) {
+            msg.payload = {
+                status: "error",
+                message: "Invalid lookAheadHours parameter. Must be a number between 1 and 168 (1 week).",
+            };
+            node.send(msg);
+            return;
+        }
+        
+        const future = new Date(now.getTime() + lookAheadHours * 60 * 60 * 1000);
 
-        let prices = await getCachedPriceData(now, future24h);
+        let prices = await getCachedPriceData(now, future);
 
         if (action === "recommendBestTime") {
             const duration = msg.payload.duration || 1; // Appliance runtime in hours
@@ -219,25 +233,42 @@ const getCachedPriceData = async (startDate, endDate) => {
                     new Date(bestSlot[bestSlot.length - 1].timestamp)
                 );
 
-                // Retrieve the current price (reuse existing now variable)
-                const nowTime = now.getTime();
-                const currentHour = now.getHours();
-                const oneHourMs = 60 * 60 * 1000;
+                // Retrieve the current price
+                // Get the start of the current hour
+                const currentHourStart = new Date(now);
+                currentHourStart.setMinutes(0, 0, 0, 0);
+                const currentHourEnd = new Date(currentHourStart);
+                currentHourEnd.setHours(currentHourEnd.getHours() + 1);
                 
-                // Find the price that matches the current hour (optimized - avoid creating Date objects in loop)
-                let currentPrice = null;
+                const currentHourStartTime = currentHourStart.getTime();
+                const currentHourEndTime = currentHourEnd.getTime();
+                
+                // Find the price that matches the current hour
+                let currentPriceValue = null;
+                let currentTimestamp = null;
                 for (const p of prices) {
                     const priceTime = new Date(p.timestamp).getTime();
                     // Check if price is within the current hour window
-                    if (priceTime <= nowTime && priceTime >= nowTime - oneHourMs) {
-                        const priceHour = new Date(p.timestamp).getHours();
-                        if (priceHour === currentHour) {
-                            currentPrice = p;
-                            break;
-                        }
+                    if (priceTime >= currentHourStartTime && priceTime < currentHourEndTime) {
+                        currentPriceValue = p.price;
+                        currentTimestamp = p.timestamp;
+                        break;
                     }
                 }
-                const currentPriceValue = currentPrice ? currentPrice.price : lowestAvgPrice;
+                
+                // Only proceed if we have a current price
+                if (currentPriceValue === null) {
+                    msg.payload = {
+                        status: "error",
+                        message: "Could not determine current price from available data. The current hour may not be included in the fetched price data.",
+                    };
+                    node.send(msg);
+                    return;
+                }
+
+                // Log current price info in debug
+                node.warn(`[DEBUG] Current Price: ${currentPriceValue} €cents/kWh at ${currentTimestamp}`);
+                node.warn(`[DEBUG] Look-ahead window: ${lookAheadHours} hours`);
 
                 // Calculate savings (handle both positive and negative cases)
                 const savings = currentPriceValue - lowestAvgPrice;
@@ -272,8 +303,9 @@ const getCachedPriceData = async (startDate, endDate) => {
                         end: endTime,
                     },
                     currentPrice: currentPriceValue,
+                    currentTimestamp,
                     savings: Math.round(savings * 100) / 100,
-                    savingsPercentage: savingsPercentage,
+                    savingsPercentage,
                     message,
                 };
             } else {

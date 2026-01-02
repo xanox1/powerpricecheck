@@ -109,7 +109,8 @@ You can also use this module in Node-RED by copying the code from `node-red-func
 ```javascript
 msg.payload = {
     action: "recommendBestTime",  // Action to perform
-    duration: 1                   // Optional: Duration in hours (default: 1)
+    duration: 1,                  // Optional: Duration in hours (default: 1)
+    lookAheadHours: 6             // Optional: Time window to search (default: 6)
 }
 ```
 
@@ -123,6 +124,7 @@ msg.payload = {
         end: "02:00"
     },
     currentPrice: 10.50,
+    currentTimestamp: "2026-01-02T15:00:00.000Z",
     savings: 3.35,
     savingsPercentage: 31.9,
     message: "The best time to run your appliance is between 02:00 and 02:00. The average price during this period is €7.15 per kWh. Potential savings: 3.35 €cents/kWh (31.9%)."
@@ -131,11 +133,12 @@ msg.payload = {
 
 **Example Flow:**
 - Inject node → Function node (with code from `node-red-function.js`) → Debug node
-- Set inject payload: `{"action": "recommendBestTime", "duration": 1}`
+- Set inject payload: `{"action": "recommendBestTime", "duration": 1, "lookAheadHours": 6}`
 
 The Node-RED implementation includes:
 - 1-hour caching to reduce API calls
-- Detailed debug logging for troubleshooting
+- Detailed debug logging for troubleshooting (includes current price and timestamp)
+- Configurable time window for searching best opportunities (default: 6 hours)
 - Support for finding the best time to run appliances
 - Automatic conversion from EUR/MWh to €cents/kWh
 

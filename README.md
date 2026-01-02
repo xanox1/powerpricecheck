@@ -131,8 +131,8 @@ Recommends the optimal time to run an appliance based on energy prices.
   recommendation: {
     startTime: "2026-01-02T02:00:00.000Z",
     startHour: 2,
-    endTime: "2026-01-02T02:00:00.000Z",
-    endHour: 2,
+    endTime: "2026-01-02T03:00:00.000Z",  // When the appliance finishes (start + duration)
+    endHour: 3,
     averagePrice: 7.15,
     prices: [/* array of prices for the time slot */]
   },

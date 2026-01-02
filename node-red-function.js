@@ -222,26 +222,44 @@ const getCachedPriceData = async (startDate, endDate) => {
                 // Retrieve the current price (reuse existing now variable)
                 const nowTime = now.getTime();
                 const currentHour = now.getHours();
+                const oneHourMs = 60 * 60 * 1000;
                 
-                // Find the price that matches the current hour (closest to current time)
-                const currentPrice = prices.find(p => {
-                    const priceDate = new Date(p.timestamp);
-                    const priceHour = priceDate.getHours();
-                    const priceTime = priceDate.getTime();
-                    // Find price that is for current hour and closest to now (within the hour)
-                    return priceHour === currentHour && priceTime <= nowTime && 
-                           priceTime >= nowTime - 60 * 60 * 1000; // Within last hour
-                });
-                const currentPriceValue = currentPrice ? currentPrice.price : 0;
+                // Find the price that matches the current hour (optimized - avoid creating Date objects in loop)
+                let currentPrice = null;
+                for (const p of prices) {
+                    const priceTime = new Date(p.timestamp).getTime();
+                    // Check if price is within the current hour window
+                    if (priceTime <= nowTime && priceTime >= nowTime - oneHourMs) {
+                        const priceHour = new Date(p.timestamp).getHours();
+                        if (priceHour === currentHour) {
+                            currentPrice = p;
+                            break;
+                        }
+                    }
+                }
+                const currentPriceValue = currentPrice ? currentPrice.price : lowestAvgPrice;
 
-                const savings = currentPriceValue ? currentPriceValue - lowestAvgPrice : 0;
-                const savingsPercentage = currentPriceValue
+                // Calculate savings (handle both positive and negative cases)
+                const savings = currentPriceValue - lowestAvgPrice;
+                const savingsPercentage = currentPriceValue > 0
                     ? Math.round((savings / currentPriceValue) * 10000) / 100
                     : 0;
 
-                const message = `The best time to run your appliance is between ${startTime} and ${endTime}. The average price during this period is €${lowestAvgPrice.toFixed(
-                    2
-                )} per kWh. Potential savings: ${savings.toFixed(2)} €cents/kWh (${savingsPercentage.toFixed(1)}%).`;
+                // Generate message based on whether there are savings
+                let message;
+                if (savings > 0) {
+                    message = `The best time to run your appliance is between ${startTime} and ${endTime}. The average price during this period is €${lowestAvgPrice.toFixed(
+                        2
+                    )} per kWh. Potential savings: ${savings.toFixed(2)} €cents/kWh (${savingsPercentage.toFixed(1)}%).`;
+                } else if (savings < 0) {
+                    message = `The best time to run your appliance is between ${startTime} and ${endTime}. The average price during this period is €${lowestAvgPrice.toFixed(
+                        2
+                    )} per kWh. Note: This is ${Math.abs(savings).toFixed(2)} €cents/kWh more than the current price.`;
+                } else {
+                    message = `The best time to run your appliance is between ${startTime} and ${endTime}. The average price during this period is €${lowestAvgPrice.toFixed(
+                        2
+                    )} per kWh. This is the same as the current price.`;
+                }
 
                 // Log the recommendation message
                 node.warn(`[DEBUG] Recommendation: ${message}`);

@@ -37,13 +37,13 @@
  *     bestTime: {
  *       averagePrice: 7.15,
  *       start: "02:00",
- *       end: "02:00"
+ *       end: "03:00"  // End time shows when appliance finishes (start + duration)
  *     },
  *     currentPrice: 10.50,
  *     currentTimestamp: "2026-01-02T15:00:00.000Z",
  *     savings: 3.35,
  *     savingsPercentage: 31.9,
- *     message: "The best time to run your appliance is between 02:00 and 02:00. The average price during this period is €7.15 per kWh. Potential savings: 3.35 €cents/kWh (31.9%)."
+ *     message: "The best time to run your appliance is between 02:00 and 03:00. The average price during this period is €7.15 per kWh. Potential savings: 3.35 €cents/kWh (31.9%)."
  *   }
  * }
  */

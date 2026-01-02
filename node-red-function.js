@@ -4,8 +4,17 @@
  * This is a self-contained function that can be used directly in a Node-RED function node.
  * 
  * Prerequisites:
- * - Install axios and xml2js globally in Node-RED settings or ensure they are available
- * - Set ENTSOE_API_KEY as an environment variable in Node-RED settings.js
+ * - Install axios and xml2js in Node-RED:
+ *   1. Run in Node-RED directory: npm install axios xml2js
+ *   2. Add to settings.js functionGlobalContext:
+ *      functionGlobalContext: {
+ *          axios: require('axios'),
+ *          xml2js: require('xml2js')
+ *      }
+ * - Set ENTSOE_API_KEY as an environment variable in Node-RED settings.js:
+ *   env: {
+ *       ENTSOE_API_KEY: "your-api-token-here"
+ *   }
  * 
  * Usage:
  * 1. Copy the entire content below into a Node-RED function node
@@ -34,9 +43,19 @@
  * }
  */
 
-// Dependencies (ensure these are globally available in Node-RED)
-// - axios 
-// - xml2js
+// Load required modules from global context
+const axios = global.get('axios');
+const xml2js = global.get('xml2js');
+
+// Validate dependencies
+if (!axios) {
+    node.error('axios module not found. Please add it to functionGlobalContext in settings.js');
+    return;
+}
+if (!xml2js) {
+    node.error('xml2js module not found. Please add it to functionGlobalContext in settings.js');
+    return;
+}
 
 // Cache lifespan in milliseconds (e.g., 1 hour)
 const CACHE_LIFESPAN = 60 * 60 * 1000;
@@ -67,20 +86,26 @@ const getCachedPriceData = async (startDate, endDate) => {
 
     const start = formatter(new Date(startDate));
     const end = formatter(new Date(endDate));
-    const url = `https://web-api.tp.entsoe.eu/api?securityToken=${env.get(
-        "ENTSOE_API_KEY"
-    )}&documentType=A44&in_Domain=10YNL----------L&out_Domain=10YNL----------L&periodStart=${start}&periodEnd=${end}`;
+    const apiKey = env.get("ENTSOE_API_KEY");
+    
+    if (!apiKey) {
+        node.error("[ERROR] ENTSOE_API_KEY not found in environment variables");
+        throw new Error("ENTSOE_API_KEY not configured");
+    }
+    
+    const url = `https://web-api.tp.entsoe.eu/api?securityToken=${apiKey}&documentType=A44&in_Domain=10YNL----------L&out_Domain=10YNL----------L&periodStart=${start}&periodEnd=${end}`;
 
-    // Log formatted API request details
-    node.warn(`[DEBUG] Formatted API URL: ${url}`);
+    // Log formatted API request details (without exposing the full key)
+    const maskedKey = apiKey.substring(0, 8) + "..." + apiKey.substring(apiKey.length - 4);
+    node.warn(`[DEBUG] API request with key: ${maskedKey}, period: ${start} to ${end}`);
 
     try {
         // Make the API call
         const response = await axios.get(url);
         const rawData = response.data;
 
-        // Log API response sample
-        node.warn(`[DEBUG] Raw API response received. Sample: ${rawData.substring(0, 200)}...`);
+        // Log API response info (without full data to avoid exposing sensitive info)
+        node.warn(`[DEBUG] Raw API response received. Length: ${rawData.length} characters`);
 
         // Parse the XML response
         const parser = new xml2js.Parser({ explicitArray: false });
@@ -191,11 +216,15 @@ const getCachedPriceData = async (startDate, endDate) => {
                     new Date(bestSlot[bestSlot.length - 1].timestamp)
                 );
 
-                // Retrieve the current price
+                // Retrieve the current price (optimize date creation)
+                const now = new Date();
+                const nowTime = now.getTime();
+                const currentHour = now.getHours();
                 const currentPrice = prices.find(
-                    p =>
-                        new Date(p.timestamp) <= new Date() &&
-                        new Date(p.timestamp).getHours() === new Date().getHours()
+                    p => {
+                        const priceDate = new Date(p.timestamp);
+                        return priceDate.getTime() <= nowTime && priceDate.getHours() === currentHour;
+                    }
                 );
                 const currentPriceValue = currentPrice ? currentPrice.price : 0;
 

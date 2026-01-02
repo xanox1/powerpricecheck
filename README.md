@@ -80,16 +80,24 @@ console.log(recommendation.message);
 You can also use this module in Node-RED by copying the code from `node-red-function.js` into a function node.
 
 **Prerequisites:**
-1. Install `axios` and `xml2js` globally in Node-RED or ensure they are available
-2. Set `ENTSOE_API_KEY` as an environment variable in Node-RED `settings.js`:
+1. Install required dependencies in your Node-RED directory:
+   ```bash
+   cd ~/.node-red  # or your Node-RED installation directory
+   npm install axios xml2js
+   ```
+
+2. Configure Node-RED `settings.js` to make modules available and set your API key:
    ```javascript
    functionGlobalContext: {
-       // ... other settings
+       axios: require('axios'),
+       xml2js: require('xml2js')
    },
    env: {
        ENTSOE_API_KEY: "your-api-token-here"
    }
    ```
+
+3. Restart Node-RED after modifying settings.js
 
 **Setup Steps:**
 1. Create a new function node in Node-RED

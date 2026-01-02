@@ -244,19 +244,17 @@ const getCachedPriceData = async (startDate, endDate) => {
                 const currentHourEndTime = currentHourEnd.getTime();
                 
                 // Find the price that matches the current hour
-                let currentPrice = null;
+                let currentPriceValue = null;
                 let currentTimestamp = null;
                 for (const p of prices) {
                     const priceTime = new Date(p.timestamp).getTime();
                     // Check if price is within the current hour window
                     if (priceTime >= currentHourStartTime && priceTime < currentHourEndTime) {
-                        currentPrice = p;
+                        currentPriceValue = p.price;
                         currentTimestamp = p.timestamp;
                         break;
                     }
                 }
-                
-                const currentPriceValue = currentPrice ? currentPrice.price : null;
                 
                 // Only proceed if we have a current price
                 if (currentPriceValue === null) {

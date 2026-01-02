@@ -99,7 +99,7 @@ const recommendBestTime = async (durationHours = 1, lookAheadHours = 24) => {
         startTime: slot[0].timestamp,
         startHour: slot[0].hour,
         endTime: endDate.toISOString(),
-        endHour: endDate.getHours(),
+        endHour: endDate.getUTCHours(),
         averagePrice: Math.round(avgPrice * 100) / 100,
         prices: slot.map(p => ({
           timestamp: p.timestamp,

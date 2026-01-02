@@ -38,7 +38,10 @@
  *       start: "02:00",
  *       end: "02:00"
  *     },
- *     message: "The best time to run your appliance is between 02:00 and 02:00..."
+ *     currentPrice: 10.50,
+ *     savings: 3.35,
+ *     savingsPercentage: 31.9,
+ *     message: "The best time to run your appliance is between 02:00 and 02:00. The average price during this period is €7.15 per kWh. Potential savings: 3.35 €cents/kWh (31.9%)."
  *   }
  * }
  */
@@ -216,26 +219,29 @@ const getCachedPriceData = async (startDate, endDate) => {
                     new Date(bestSlot[bestSlot.length - 1].timestamp)
                 );
 
-                // Retrieve the current price (optimize date creation)
-                const now = new Date();
+                // Retrieve the current price (reuse existing now variable)
                 const nowTime = now.getTime();
                 const currentHour = now.getHours();
-                const currentPrice = prices.find(
-                    p => {
-                        const priceDate = new Date(p.timestamp);
-                        return priceDate.getTime() <= nowTime && priceDate.getHours() === currentHour;
-                    }
-                );
+                
+                // Find the price that matches the current hour (closest to current time)
+                const currentPrice = prices.find(p => {
+                    const priceDate = new Date(p.timestamp);
+                    const priceHour = priceDate.getHours();
+                    const priceTime = priceDate.getTime();
+                    // Find price that is for current hour and closest to now (within the hour)
+                    return priceHour === currentHour && priceTime <= nowTime && 
+                           priceTime >= nowTime - 60 * 60 * 1000; // Within last hour
+                });
                 const currentPriceValue = currentPrice ? currentPrice.price : 0;
 
                 const savings = currentPriceValue ? currentPriceValue - lowestAvgPrice : 0;
                 const savingsPercentage = currentPriceValue
-                    ? (savings / currentPriceValue) * 100
+                    ? Math.round((savings / currentPriceValue) * 10000) / 100
                     : 0;
 
                 const message = `The best time to run your appliance is between ${startTime} and ${endTime}. The average price during this period is €${lowestAvgPrice.toFixed(
                     2
-                )} per kWh.`;
+                )} per kWh. Potential savings: ${savings.toFixed(2)} €cents/kWh (${savingsPercentage.toFixed(1)}%).`;
 
                 // Log the recommendation message
                 node.warn(`[DEBUG] Recommendation: ${message}`);
@@ -247,6 +253,9 @@ const getCachedPriceData = async (startDate, endDate) => {
                         start: startTime,
                         end: endTime,
                     },
+                    currentPrice: currentPriceValue,
+                    savings: Math.round(savings * 100) / 100,
+                    savingsPercentage: savingsPercentage,
                     message,
                 };
             } else {

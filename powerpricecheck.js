@@ -5,6 +5,20 @@
 
 const entsoeClient = require('./entsoe-client.js');
 
+// Constants
+const MS_PER_HOUR = 60 * 60 * 1000; // Milliseconds per hour
+
+// Global context to store API data (both raw and formatted)
+global.powerPriceContext = {
+  raw: null,              // Raw API output
+  formatted: {            // Formatted data for easy access
+    lastUpdated: null,
+    date: null,
+    todaysPrices: [],
+    allPrices: []
+  }
+};
+
 // Load API token from environment (required)
 const ENTSOE_API_TOKEN = process.env.ENTSOE_API_TOKEN;
 
@@ -13,11 +27,66 @@ if (!ENTSOE_API_TOKEN) {
 }
 
 /**
- * Get price data from ENTSO-E API
+ * Format prices into a sensible structure
+ * @param {Array} prices - Raw price data
+ * @returns {Object} Formatted price context
+ */
+const formatPriceContext = (prices) => {
+  const now = new Date();
+  const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tomorrowDate = new Date(todayDate.getTime() + 24 * MS_PER_HOUR);
+  
+  // Filter today's prices (all prices for today regardless of past/current/future)
+  const todaysPrices = prices
+    .filter(p => {
+      const priceDate = new Date(p.timestamp);
+      return priceDate >= todayDate && priceDate < tomorrowDate;
+    })
+    .map(p => ({
+      hour: p.hour,
+      timestamp: p.timestamp,
+      price: p.price,
+      unit: '€cents/kWh',
+      period: p.period
+    }))
+    .sort((a, b) => a.hour - b.hour);
+  
+  return {
+    lastUpdated: now.toISOString(),
+    date: todayDate.toISOString().split('T')[0],
+    todaysPrices: todaysPrices,
+    allPrices: prices.map(p => ({
+      hour: p.hour,
+      timestamp: p.timestamp,
+      price: p.price,
+      unit: '€cents/kWh',
+      period: p.period
+    }))
+  };
+};
+
+/**
+ * Get price data from ENTSO-E API and store in global context
  * @returns {Promise<Array>} Price data
  */
 const getPriceData = async () => {
-  return await entsoeClient.getPriceData(ENTSOE_API_TOKEN);
+  const data = await entsoeClient.getPriceData(ENTSOE_API_TOKEN);
+  
+  // Store raw output
+  global.powerPriceContext.raw = data;
+  
+  // Store formatted data
+  global.powerPriceContext.formatted = formatPriceContext(data);
+  
+  return data;
+};
+
+/**
+ * Get the global price context (both raw and formatted data)
+ * @returns {Object} Global context with raw and formatted price data
+ */
+const getGlobalContext = () => {
+  return global.powerPriceContext;
 };
 
 /**
@@ -95,7 +164,7 @@ const recommendBestTime = async (durationHours = 1, lookAheadHours = 24) => {
       lowestAvgPrice = avgPrice;
       // Calculate end time as start time + duration hours
       const startDate = new Date(slot[0].timestamp);
-      const endDate = new Date(startDate.getTime() + durationHours * 60 * 60 * 1000);
+      const endDate = new Date(startDate.getTime() + durationHours * MS_PER_HOUR);
       
       bestSlot = {
         startTime: slot[0].timestamp,
@@ -135,5 +204,6 @@ module.exports = {
   getCurrentPrice,
   getPastPrices,
   getFuturePrices,
-  recommendBestTime
+  recommendBestTime,
+  getGlobalContext
 };

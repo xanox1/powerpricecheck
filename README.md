@@ -139,6 +139,7 @@ The Node-RED implementation includes:
 - 1-hour caching in global context to reduce API calls
 - Cache stored in global context for easy inspection and debugging
 - Access cache via: `global.get('entsoePriceCache')`
+- See `examples/inspect-cache.js` for helper functions to inspect the cache
 - Detailed debug logging for troubleshooting (includes current price and timestamp)
 - Configurable time window for searching best opportunities (default: 6 hours)
 - Support for finding the best time to run appliances

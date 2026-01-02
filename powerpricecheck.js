@@ -93,11 +93,15 @@ const recommendBestTime = async (durationHours = 1, lookAheadHours = 24) => {
     
     if (avgPrice < lowestAvgPrice) {
       lowestAvgPrice = avgPrice;
+      // Calculate end time as start time + duration hours
+      const startDate = new Date(slot[0].timestamp);
+      const endDate = new Date(startDate.getTime() + durationHours * 60 * 60 * 1000);
+      
       bestSlot = {
         startTime: slot[0].timestamp,
         startHour: slot[0].hour,
-        endTime: slot[slot.length - 1].timestamp,
-        endHour: slot[slot.length - 1].hour,
+        endTime: endDate.toISOString(),
+        endHour: endDate.getHours(),
         averagePrice: Math.round(avgPrice * 100) / 100,
         prices: slot.map(p => ({
           timestamp: p.timestamp,
